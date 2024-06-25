@@ -8,7 +8,9 @@ from src.models.base import Base
 from src.persistence.repository import Repository
 from utils.populate import populate_db
 
+from src.persistence.memory import MemoryRepository
 
+repo = MemoryRepository()
 class MemoryRepository(Repository):
     """
     A Repository that does not persist data, it only stores it in memory

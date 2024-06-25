@@ -1,62 +1,69 @@
-"""
-Country related functionality
-"""
+from src.persistence import db
+from src.models.base import Base
+from src.persistence.sqlalchemy_repository import SQLAlchemyRepository
 
 
-class Country:
-    """
-    Country representation
+class Country(db.Model, Base):
+    """Country representation"""
 
-    This class does NOT inherit from Base, you can't delete or update a country
+    __tablename__ = 'country'
 
-    This class is used to get and list countries
-    """
+    code = db.Column(db.String(10), primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
 
-    name: str
-    code: str
-    cities: list
-
-    def __init__(self, name: str, code: str, **kw) -> None:
-        """Dummy init"""
-        super().__init__(**kw)
+    def __init__(self, name: str, code: str, **kwargs) -> None:
+        """Constructor"""
+        super().__init__(**kwargs)
         self.name = name
         self.code = code
 
-    def __repr__(self) -> str:
-        """Dummy repr"""
-        return f"<Country {self.code} ({self.name})>"
-
     def to_dict(self) -> dict:
-        """Returns the dictionary representation of the country"""
+        """Dictionary representation of the object"""
         return {
             "name": self.name,
             "code": self.code,
         }
 
     @staticmethod
-    def get_all() -> list["Country"]:
+    def get_all(repository: SQLAlchemyRepository) -> list["Country"]:
         """Get all countries"""
-        from src.persistence import repo
-
-        countries: list["Country"] = repo.get_all("country")
-
-        return countries
+        return repository.all(Country)
 
     @staticmethod
-    def get(code: str) -> "Country | None":
+    def get(code: str, repository: SQLAlchemyRepository) -> "Country | None":
         """Get a country by its code"""
-        for country in Country.get_all():
-            if country.code == code:
-                return country
-        return None
+        return repository.get(Country, code)
 
     @staticmethod
-    def create(name: str, code: str) -> "Country":
+    def create(name: str, code: str, repository: SQLAlchemyRepository) -> "Country":
         """Create a new country"""
-        from src.persistence import repo
-
-        country = Country(name, code)
-
-        repo.save(country)
-
+        country = Country(name=name, code=code)
+        repository.add(country)
+        repository.commit()
         return country
+
+    @staticmethod
+    def update(code: str, data: dict, repository: SQLAlchemyRepository) -> "Country | None":
+        """Update an existing country"""
+        country = repository.get(Country, code)
+
+        if not country:
+            return None
+
+        if 'name' in data:
+            country.name = data['name']
+
+        repository.commit()
+        return country
+
+    @staticmethod
+    def delete(code: str, repository: SQLAlchemyRepository) -> bool:
+        """Delete a country by code"""
+        country = repository.get(Country, code)
+
+        if not country:
+            return False
+
+        repository.delete(country)
+        repository.commit()
+        return True

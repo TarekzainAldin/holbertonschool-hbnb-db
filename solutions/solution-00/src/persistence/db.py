@@ -41,3 +41,4 @@ class DBRepository(Repository):
     def delete(self, obj: Base) -> bool:
         """Not implemented"""
         return False
+

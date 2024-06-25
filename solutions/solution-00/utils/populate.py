@@ -15,4 +15,3 @@ def populate_db(repo: Repository) -> None:
         repo.save(country)
 
     print("Memory DB populated")
-
