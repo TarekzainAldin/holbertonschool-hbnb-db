@@ -1,20 +1,32 @@
-# src/models/amenity.py
-
-from src.persistence import db
+from datetime import datetime
+from typing import Optional
+import uuid
+from xmlrpc.client import DateTime
+from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy.orm import relationship
 from src.models.base import Base
-from src.persistence.sqlalchemy_repository import SQLAlchemyRepository
 
-class Amenity(db.Model, Base):
-    __tablename__ = 'amenity'
-
-    id = db.Column(db.String(36), primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
+class Amenity(Base):
+    """Amenity representation"""
+    
+    __tablename__ = 'amenities'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(50), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __init__(self, name: str, **kwargs) -> None:
+        """Amenity init"""
         super().__init__(**kwargs)
         self.name = name
 
+    def __repr__(self) -> str:
+        """Amenity repr"""
+        return f"<Amenity {self.id} ({self.name})>"
+
     def to_dict(self) -> dict:
+        """Dictionary representation of the object"""
         return {
             "id": self.id,
             "name": self.name,
@@ -23,35 +35,82 @@ class Amenity(db.Model, Base):
         }
 
     @staticmethod
-    def create(data: dict, repository: SQLAlchemyRepository) -> "Amenity":
-        amenity = Amenity(name=data['name'])
-        repository.add(amenity)
-        repository.commit()
+    def create(session, data: dict) -> "Amenity":
+        """Create a new amenity"""
+        amenity = Amenity(**data)
+        session.add(amenity)
+        session.commit()
         return amenity
 
     @staticmethod
-    def update(amenity_id: str, data: dict, repository: SQLAlchemyRepository) -> "Amenity | None":
-        amenity = repository.get(Amenity, amenity_id)
+    def update(session, amenity_id: str, data: dict) -> "Amenity | None":
+        """Update an existing amenity"""
+        amenity: Amenity = session.query(Amenity).filter_by(id=amenity_id).first()
         if not amenity:
             return None
-        if 'name' in data:
-            amenity.name = data['name']
-        repository.commit()
+        if "name" in data:
+            amenity.name = data["name"]
+        session.commit()
         return amenity
 
+
+class PlaceAmenity(Base):
+    """PlaceAmenity representation"""
+    
+    __tablename__ = 'place_amenities'
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    place_id = Column(String(36), ForeignKey('places.id'), nullable=False)
+    amenity_id = Column(String(36), ForeignKey('amenities.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __init__(self, place_id: str, amenity_id: str, **kwargs) -> None:
+        """PlaceAmenity init"""
+        super().__init__(**kwargs)
+        self.place_id = place_id
+        self.amenity_id = amenity_id
+
+    def __repr__(self) -> str:
+        """PlaceAmenity repr"""
+        return f"<PlaceAmenity ({self.place_id} - {self.amenity_id})>"
+
+    def to_dict(self) -> dict:
+        """Dictionary representation of the object"""
+        return {
+            "id": self.id,
+            "place_id": self.place_id,
+            "amenity_id": self.amenity_id,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
     @staticmethod
-    def delete(amenity_id: str, repository: SQLAlchemyRepository) -> bool:
-        amenity = repository.get(Amenity, amenity_id)
-        if not amenity:
+    def get(session, place_id: str, amenity_id: str) -> "PlaceAmenity | None":
+        """Get a PlaceAmenity object by place_id and amenity_id"""
+        return session.query(PlaceAmenity).filter_by(place_id=place_id, amenity_id=amenity_id).first()
+
+    @staticmethod
+    def create(session, data: dict) -> "PlaceAmenity":
+        """Create a new PlaceAmenity object"""
+        new_place_amenity = PlaceAmenity(**data)
+        session.add(new_place_amenity)
+        session.commit()
+        return new_place_amenity
+
+    @staticmethod
+    def delete(session, place_id: str, amenity_id: str) -> bool:
+        """Delete a PlaceAmenity object by place_id and amenity_id"""
+        place_amenity = PlaceAmenity.get(session, place_id, amenity_id)
+        if not place_amenity:
             return False
-        repository.delete(amenity)
-        repository.commit()
+        session.delete(place_amenity)
+        session.commit()
         return True
 
     @staticmethod
-    def get(amenity_id: str, repository: SQLAlchemyRepository) -> "Amenity | None":
-        return repository.get(Amenity, amenity_id)
-
-    @staticmethod
-    def get_all(repository: SQLAlchemyRepository) -> list["Amenity"]:
-        return repository.all(Amenity)
+    def update(session, entity_id: str, data: dict):
+        """Not implemented, isn't needed"""
+        raise NotImplementedError(
+            "This method is defined only because of the Base class"
+        )

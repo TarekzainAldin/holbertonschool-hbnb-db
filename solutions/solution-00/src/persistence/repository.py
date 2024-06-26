@@ -1,38 +1,31 @@
-from src.models.base import Base
-from src.persistence.repository import Repository
-from src.persistence import db
+""" Repository pattern for data access layer """
 
-class SQLAlchemyRepository(Repository):
-    def __init__(self):
-        pass
-    """SQLAlchemy DB repository"""
+from abc import ABC, abstractmethod
 
-    def get_all(self, model_name: str) -> list:
-        """Get all objects of a given model"""
-        model_class = Base._decl_class_registry.get(model_name)
-        return model_class.query.all() if model_class else []
 
-    def get(self, model_name: str, obj_id: str) -> Base | None:
-        """Get an object by its ID"""
-        model_class = Base._decl_class_registry.get(model_name)
-        return model_class.query.get(obj_id) if model_class else None
+class Repository(ABC):
+    """Abstract class for repository pattern"""
 
+    @abstractmethod
     def reload(self) -> None:
-        """No need for reload in DB"""
-        pass
+        """Reload data to the repository"""
 
-    def save(self, obj: Base) -> None:
+    @abstractmethod
+    def get_all(self, model_name: str) -> list:
+        """Get all objects of a model"""
+
+    @abstractmethod
+    def get(self, model_name: str, id: str) -> None:
+        """Get an object by id"""
+
+    @abstractmethod
+    def save(self, obj) -> None:
         """Save an object"""
-        db.session.add(obj)
-        db.session.commit()
 
-    def update(self, obj: Base) -> Base | None:
+    @abstractmethod
+    def update(self, obj) -> None:
         """Update an object"""
-        db.session.commit()
-        return obj
 
-    def delete(self, obj: Base) -> bool:
+    @abstractmethod
+    def delete(self, obj) -> bool:
         """Delete an object"""
-        db.session.delete(obj)
-        db.session.commit()
-        return True

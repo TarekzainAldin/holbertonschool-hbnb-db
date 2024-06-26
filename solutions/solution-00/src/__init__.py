@@ -3,68 +3,76 @@
 from flask import Flask
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+from flask_jwt_extended import JWTManager
+import os
 
-# Initialize Flask extensions
-db = SQLAlchemy()
-migrate = Migrate()
+# Initialize extensions
 cors = CORS()
+db = SQLAlchemy()
+jwt = JWTManager()
 
-def create_app(config_class="src.config.DevelopmentConfig") -> Flask:
+def create_app():
     """
-    Create a Flask app with the given configuration class.
-    The default configuration class is DevelopmentConfig.
+    Create a Flask app with the appropriate configuration.
     """
     app = Flask(__name__)
     app.url_map.strict_slashes = False
 
-    app.config.from_object(config_class)
+    # Load configuration based on environment
+    if app.env == 'production':
+        app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+    elif app.env == 'testing':
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    else:
+        app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///hbnb_dev.db')
 
-    # Initialize extensions with the app context
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # Initialize extensions
+    cors.init_app(app)
     db.init_app(app)
-    migrate.init_app(app, db)
-    cors.init_app(app, resources={r"/api/*": {"origins": "*"}})
+    jwt.init_app(app)
 
-    # Register other parts of the application
+    # Register routes and error handlers
     register_extensions(app)
     register_routes(app)
     register_handlers(app)
 
     return app
 
-def register_extensions(app: Flask) -> None:
-    """Register the extensions for the Flask app"""
-    # No need to reinitialize db and cors here
-    pass
+def register_extensions(app):
+    """Register extensions like CORS, SQLAlchemy, and JWT"""
+    cors.init_app(app)
+    db.init_app(app)
+    jwt.init_app(app)
 
-def register_routes(app: Flask) -> None:
-    """Import and register the routes for the Flask app"""
-    from src.routes.users import users_bp
-    from src.routes.countries import countries_bp
-    from src.routes.cities import cities_bp
-    from src.routes.places import places_bp
-    from src.routes.amenities import amenities_bp
-    from src.routes.reviews import reviews_bp
-
+def register_routes(app):
+    """Register Flask routes"""
+    from src.routes import (
+        users_bp, countries_bp, cities_bp, places_bp, amenities_bp, reviews_bp
+    )
     app.register_blueprint(users_bp)
     app.register_blueprint(countries_bp)
     app.register_blueprint(cities_bp)
     app.register_blueprint(places_bp)
-    app.register_blueprint(reviews_bp)
     app.register_blueprint(amenities_bp)
+    app.register_blueprint(reviews_bp)
 
-def register_handlers(app: Flask) -> None:
-    """Register the error handlers for the Flask app."""
-    app.errorhandler(404)(lambda e: (
-        {"error": "Not found", "message": str(e)}, 404
-    ))
-    app.errorhandler(400)(
-        lambda e: (
-            {"error": "Bad request", "message": str(e)}, 400
-        )
-    )
+def register_handlers(app):
+    """Register error handlers"""
+    @app.errorhandler(404)
+    def not_found(error):
+        return {"error": "Not found", "message": str(error)}, 404
 
-# Import db and models
-from src.persistence import db
-from src.models.base import Base
-from src.persistence.sqlalchemy_repository import SQLAlchemyRepository
+    @app.errorhandler(400)
+    def bad_request(error):
+        return {"error": "Bad request", "message": str(error)}, 400
+
+# Import JWT-related functions and decorators
+from src.auth import *
+
+# Load models to ensure they are registered with SQLAlchemy
+from src.models import *
+
+# Load routes to ensure they are registered with Flask
+from src.routes import *

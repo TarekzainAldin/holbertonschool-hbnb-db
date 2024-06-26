@@ -1,49 +1,49 @@
-# src/models/place.py
+"""
+Place related functionality
+"""
 
-from src.persistence import db
 from src.models.base import Base
 from src.models.city import City
 from src.models.user import User
-from src.persistence.sqlalchemy_repository import SQLAlchemyRepository
 
 
-class Place(db.Model, Base):
+class Place(Base):
     """Place representation"""
 
-    __tablename__ = 'place'
+    name: str
+    description: str
+    address: str
+    latitude: float
+    longitude: float
+    host_id: str
+    city_id: str
+    price_per_night: int
+    number_of_rooms: int
+    number_of_bathrooms: int
+    max_guests: int
 
-    id = db.Column(db.String(36), primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    address = db.Column(db.String(255), nullable=False)
-    latitude = db.Column(db.Float, nullable=False)
-    longitude = db.Column(db.Float, nullable=False)
-    host_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False)
-    city_id = db.Column(db.String(36), db.ForeignKey('city.id'), nullable=False)
-    price_per_night = db.Column(db.Integer, nullable=False)
-    number_of_rooms = db.Column(db.Integer, nullable=False)
-    number_of_bathrooms = db.Column(db.Integer, nullable=False)
-    max_guests = db.Column(db.Integer, nullable=False)
+    def __init__(self, data: dict | None = None, **kw) -> None:
+        """Dummy init"""
+        super().__init__(**kw)
 
-    city = db.relationship('City', backref=db.backref('places', lazy=True))
-    host = db.relationship('User', backref=db.backref('places', lazy=True))
+        if not data:
+            return
 
-    def __init__(self, data: dict | None = None, **kwargs) -> None:
-        """Constructor"""
-        super().__init__(**kwargs)
+        self.name = data.get("name", "")
+        self.description = data.get("description", "")
+        self.address = data.get("address", "")
+        self.city_id = data["city_id"]
+        self.latitude = float(data.get("latitude", 0.0))
+        self.longitude = float(data.get("longitude", 0.0))
+        self.host_id = data["host_id"]
+        self.price_per_night = int(data.get("price_per_night", 0))
+        self.number_of_rooms = int(data.get("number_of_rooms", 0))
+        self.number_of_bathrooms = int(data.get("number_of_bathrooms", 0))
+        self.max_guests = int(data.get("max_guests", 0))
 
-        if data:
-            self.name = data.get("name", "")
-            self.description = data.get("description", "")
-            self.address = data.get("address", "")
-            self.city_id = data["city_id"]
-            self.latitude = float(data.get("latitude", 0.0))
-            self.longitude = float(data.get("longitude", 0.0))
-            self.host_id = data["host_id"]
-            self.price_per_night = int(data.get("price_per_night", 0))
-            self.number_of_rooms = int(data.get("number_of_rooms", 0))
-            self.number_of_bathrooms = int(data.get("number_of_bathrooms", 0))
-            self.max_guests = int(data.get("max_guests", 0))
+    def __repr__(self) -> str:
+        """Dummy repr"""
+        return f"<Place {self.id} ({self.name})>"
 
     def to_dict(self) -> dict:
         """Dictionary representation of the object"""
@@ -65,27 +65,32 @@ class Place(db.Model, Base):
         }
 
     @staticmethod
-    def create(data: dict, repository: SQLAlchemyRepository) -> "Place":
+    def create(data: dict) -> "Place":
         """Create a new place"""
-        user = repository.get(User, data['host_id'])
+        from src.persistence import repo
+
+        user: User | None = User.get(data["host_id"])
 
         if not user:
             raise ValueError(f"User with ID {data['host_id']} not found")
 
-        city = repository.get(City, data['city_id'])
+        city: City | None = City.get(data["city_id"])
 
         if not city:
             raise ValueError(f"City with ID {data['city_id']} not found")
 
         new_place = Place(data=data)
-        repository.add(new_place)
-        repository.commit()
+
+        repo.save(new_place)
+
         return new_place
 
     @staticmethod
-    def update(place_id: str, data: dict, repository: SQLAlchemyRepository) -> "Place | None":
+    def update(place_id: str, data: dict) -> "Place | None":
         """Update an existing place"""
-        place = repository.get(Place, place_id)
+        from src.persistence import repo
+
+        place: Place | None = Place.get(place_id)
 
         if not place:
             return None
@@ -93,27 +98,6 @@ class Place(db.Model, Base):
         for key, value in data.items():
             setattr(place, key, value)
 
-        repository.commit()
+        repo.update(place)
+
         return place
-
-    @staticmethod
-    def delete(place_id: str, repository: SQLAlchemyRepository) -> bool:
-        """Delete a place by ID"""
-        place = repository.get(Place, place_id)
-
-        if not place:
-            return False
-
-        repository.delete(place)
-        repository.commit()
-        return True
-
-    @staticmethod
-    def get(place_id: str, repository: SQLAlchemyRepository) -> "Place | None":
-        """Get a place by ID"""
-        return repository.get(Place, place_id)
-
-    @staticmethod
-    def get_all(repository: SQLAlchemyRepository) -> list["Place"]:
-        """Get all places"""
-        return repository.all(Place)

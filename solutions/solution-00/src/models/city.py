@@ -1,28 +1,29 @@
-from src.persistence import db
+from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from datetime import datetime
 from src.models.base import Base
-from src.models.country import Country
-from src.persistence.sqlalchemy_repository import SQLAlchemyRepository
 
+class City(Base):
+    __tablename__ = 'cities'
 
-class City(db.Model, Base):
-    """City representation"""
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    country_code = Column(String, ForeignKey('countries.code'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    __tablename__ = 'city'
+    country = relationship("Country", backref="cities")
 
-    id = db.Column(db.String(36), primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    country_code = db.Column(db.String(10), db.ForeignKey('country.code'), nullable=False)
-
-    country = db.relationship('Country', backref=db.backref('cities', lazy=True))
-
-    def __init__(self, name: str, country_code: str, **kwargs) -> None:
-        """Constructor"""
-        super().__init__(**kwargs)
+    def __init__(self, name: str, country_code: str, id=None) -> None:
+        super().__init__()
+        self.id = id  # Assuming id is generated elsewhere or handled by SQLAlchemy
         self.name = name
         self.country_code = country_code
 
+    def __repr__(self) -> str:
+        return f"<City {self.id} ({self.name})>"
+
     def to_dict(self) -> dict:
-        """Dictionary representation of the object"""
         return {
             "id": self.id,
             "name": self.name,
@@ -32,53 +33,38 @@ class City(db.Model, Base):
         }
 
     @staticmethod
-    def create(data: dict, repository: SQLAlchemyRepository) -> "City":
-        """Create a new city"""
-        country = repository.get(Country, data['country_code'])
+    def create(data: dict) -> "City":
+        from src.persistence import repo
+        from src.models.country import Country
+
+        country_code = data.get("country_code")
+        country = Country.query.filter_by(code=country_code).first()
 
         if not country:
             raise ValueError("Country not found")
 
-        city = City(name=data['name'], country_code=data['country_code'])
-        repository.add(city)
-        repository.commit()
-        return city
+        new_city = City(
+            name=data["name"],
+            country_code=country_code
+        )
+
+        repo.session.add(new_city)
+        repo.session.commit()
+
+        return new_city
 
     @staticmethod
-    def update(city_id: str, data: dict, repository: SQLAlchemyRepository) -> "City | None":
-        """Update an existing city"""
-        city = repository.get(City, city_id)
+    def update(city_id: str, data: dict) -> "City":
+        from src.persistence import repo
+
+        city = City.query.get(city_id)
 
         if not city:
             raise ValueError("City not found")
 
-        if 'name' in data:
-            city.name = data['name']
+        for key, value in data.items():
+            setattr(city, key, value)
 
-        if 'country_code' in data:
-            city.country_code = data['country_code']
+        repo.session.commit()
 
-        repository.commit()
         return city
-
-    @staticmethod
-    def delete(city_id: str, repository: SQLAlchemyRepository) -> bool:
-        """Delete a city by ID"""
-        city = repository.get(City, city_id)
-
-        if not city:
-            return False
-
-        repository.delete(city)
-        repository.commit()
-        return True
-
-    @staticmethod
-    def get(city_id: str, repository: SQLAlchemyRepository) -> "City | None":
-        """Get a city by ID"""
-        return repository.get(City, city_id)
-
-    @staticmethod
-    def get_all(repository: SQLAlchemyRepository) -> list["City"]:
-        """Get all cities"""
-        return repository.all(City)
