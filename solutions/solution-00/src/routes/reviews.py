@@ -1,48 +1,39 @@
 """
-This module contains the routes for the reviews blueprint
+This module contains the routes for the reviews blueprint.
 """
 
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint
+from flask_jwt_extended import jwt_required
+from src.decorators import admin_required  # Import the admin_required decorator
 from src.controllers.reviews import (
     create_review,
     delete_review,
+    get_reviews_from_place,
+    get_reviews_from_user,
     get_review_by_id,
     get_reviews,
     update_review,
 )
-from models.user import User
 
-reviews_bp = Blueprint("reviews", __name__, url_prefix="/reviews")
+reviews_bp = Blueprint("reviews", __name__)
 
 # Public routes
-reviews_bp.route("/", methods=["GET"])(get_reviews)
-reviews_bp.route("/<review_id>", methods=["GET"])(get_review_by_id)
+reviews_bp.route("/places/<place_id>/reviews", methods=["POST"])(create_review)
+reviews_bp.route("/places/<place_id>/reviews")(get_reviews_from_place)
+reviews_bp.route("/users/<user_id>/reviews")(get_reviews_from_user)
 
-# Routes requiring authentication
-@reviews_bp.route("/", methods=["POST"])
-@jwt_required()
-def create_review_route():
-    current_user_id = get_jwt_identity()
-    current_user = User.query.get(current_user_id)
-    if not current_user.is_admin:
-        return jsonify({"message": "Admin access required"}), 403
-    return create_review()
+reviews_bp.route("/reviews", methods=["GET"])(get_reviews)
+reviews_bp.route("/reviews/<review_id>", methods=["GET"])(get_review_by_id)
 
-@reviews_bp.route("/<review_id>", methods=["PUT"])
+# Protected routes
+@reviews_bp.route("/reviews/<review_id>", methods=["PUT"])
 @jwt_required()
-def update_review_route(review_id):
-    current_user_id = get_jwt_identity()
-    current_user = User.query.get(current_user_id)
-    if not current_user.is_admin:
-        return jsonify({"message": "Admin access required"}), 403
+@admin_required
+def update_review_protected(review_id):
     return update_review(review_id)
 
-@reviews_bp.route("/<review_id>", methods=["DELETE"])
+@reviews_bp.route("/reviews/<review_id>", methods=["DELETE"])
 @jwt_required()
-def delete_review_route(review_id):
-    current_user_id = get_jwt_identity()
-    current_user = User.query.get(current_user_id)
-    if not current_user.is_admin:
-        return jsonify({"message": "Admin access required"}), 403
+@admin_required
+def delete_review_protected(review_id):
     return delete_review(review_id)
