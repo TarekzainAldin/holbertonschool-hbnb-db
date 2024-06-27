@@ -1,5 +1,5 @@
 CREATE TABLE cities (
-    id VARCHAR(36) PRIMARY KEY,
+    id interger PRIMARY KEY,
     name VARCHAR(128) NOT NULL,
     country_code VARCHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
