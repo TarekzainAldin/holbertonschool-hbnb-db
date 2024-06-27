@@ -1,5 +1,5 @@
 CREATE TABLE places (
-    id VARCHAR(36) PRIMARY KEY,
+    id interger PRIMARY KEY,
     name VARCHAR(128) NOT NULL,
     description TEXT,
     address VARCHAR(255),
