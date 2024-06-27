@@ -2,7 +2,8 @@
 This module contains the routes for the cities blueprint
 """
 
-from flask import Blueprint
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
 from src.controllers.cities import (
     create_city,
     delete_city,
@@ -13,9 +14,11 @@ from src.controllers.cities import (
 
 cities_bp = Blueprint("cities", __name__, url_prefix="/cities")
 
+# Public routes
 cities_bp.route("/", methods=["GET"])(get_cities)
-cities_bp.route("/", methods=["POST"])(create_city)
-
 cities_bp.route("/<city_id>", methods=["GET"])(get_city_by_id)
-cities_bp.route("/<city_id>", methods=["PUT"])(update_city)
-cities_bp.route("/<city_id>", methods=["DELETE"])(delete_city)
+
+# Routes requiring authentication
+cities_bp.route("/", methods=["POST"])(jwt_required()(create_city))
+cities_bp.route("/<city_id>", methods=["PUT"])(jwt_required()(update_city))
+cities_bp.route("/<city_id>", methods=["DELETE"])(jwt_required()(delete_city))
