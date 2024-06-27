@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, DateTime, Boolean
 from datetime import datetime
 from src.models.base import Base
 from src.utils.security import generate_password_hash, check_password_hash
+from src import db
 
 class User(Base):
     __tablename__ = 'users'
@@ -74,6 +75,8 @@ class User(Base):
             user.first_name = data["first_name"]
         if "last_name" in data:
             user.last_name = data["last_name"]
+        if "password" in data:
+            user.set_password(data["password"])
 
         repo.session.commit()
 

@@ -1,8 +1,7 @@
-# src/__init__.py
-
 from flask import Flask
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
 import os
 
@@ -10,6 +9,7 @@ import os
 cors = CORS()
 db = SQLAlchemy()
 jwt = JWTManager()
+bcrypt = Bcrypt()  # Initialize Bcrypt
 
 def create_app():
     """
@@ -32,6 +32,7 @@ def create_app():
     cors.init_app(app)
     db.init_app(app)
     jwt.init_app(app)
+    bcrypt.init_app(app)  # Initialize Bcrypt with the app
 
     # Register routes and error handlers
     register_extensions(app)
@@ -41,10 +42,11 @@ def create_app():
     return app
 
 def register_extensions(app):
-    """Register extensions like CORS, SQLAlchemy, and JWT"""
+    """Register extensions like CORS, SQLAlchemy, JWT, and Bcrypt"""
     cors.init_app(app)
     db.init_app(app)
     jwt.init_app(app)
+    bcrypt.init_app(app)  # Initialize Bcrypt with the app
 
 def register_routes(app):
     """Register Flask routes"""
