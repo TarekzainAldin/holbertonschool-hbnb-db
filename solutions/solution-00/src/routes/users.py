@@ -17,14 +17,43 @@ from models.user import User
 
 users_bp = Blueprint("users", __name__, url_prefix="/users")
 
-# Existing routes
-users_bp.route("/", methods=["GET"])(get_users)
-users_bp.route("/", methods=["POST"])(create_user)
-
 # Routes requiring authentication
-users_bp.route("/<user_id>", methods=["GET"])(jwt_required()(get_user_by_id))
-users_bp.route("/<user_id>", methods=["PUT"])(jwt_required()(update_user))
-users_bp.route("/<user_id>", methods=["DELETE"])(jwt_required()(delete_user))
+@users_bp.route("/", methods=["GET"])
+@jwt_required()
+def get_users_route():
+    return get_users()
+
+@users_bp.route("/", methods=["POST"])
+@jwt_required()
+def create_user_route():
+    current_user_id = get_jwt_identity()
+    current_user = User.query.get(current_user_id)
+    if not current_user.is_admin:
+        return jsonify({"message": "Admin access required"}), 403
+    return create_user()
+
+@users_bp.route("/<user_id>", methods=["GET"])
+@jwt_required()
+def get_user_by_id_route(user_id):
+    return get_user_by_id(user_id)
+
+@users_bp.route("/<user_id>", methods=["PUT"])
+@jwt_required()
+def update_user_route(user_id):
+    current_user_id = get_jwt_identity()
+    current_user = User.query.get(current_user_id)
+    if not current_user.is_admin and current_user.id != user_id:
+        return jsonify({"message": "Admin access required or own account"}), 403
+    return update_user(user_id)
+
+@users_bp.route("/<user_id>", methods=["DELETE"])
+@jwt_required()
+def delete_user_route(user_id):
+    current_user_id = get_jwt_identity()
+    current_user = User.query.get(current_user_id)
+    if not current_user.is_admin:
+        return jsonify({"message": "Admin access required"}), 403
+    return delete_user(user_id)
 
 # Register route
 @users_bp.route("/register", methods=["POST"])
