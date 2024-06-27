@@ -1,5 +1,5 @@
 CREATE TABLE users (
-    id VARCHAR(36) PRIMARY KEY,
+    id interger  PRIMARY KEY,
     email VARCHAR(120) UNIQUE NOT NULL,
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,
