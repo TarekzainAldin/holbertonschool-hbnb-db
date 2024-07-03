@@ -1,0 +1,18 @@
+{
+  "name": "solution-00",
+  "version": "1.0.0",
+  "description": "This solution successfully implements the repository pattern.\r It passes the tests provided in the `/hbnb/part1/tests` directory.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
